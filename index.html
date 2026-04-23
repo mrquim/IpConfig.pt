@@ -3,90 +3,73 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>IpConfig.pt - Qual é o meu IP? IPv4, IPv6, localização e navegador</title>
-  <meta name="description" content="IpConfig.pt: descobre rapidamente o teu endereço IP público IPv4 e IPv6, ISP, localização aproximada, hostname, fuso horário, navegador e resolução do ecrã.">
-  <meta name="robots" content="index,follow,max-image-preview:large">
+  <title>IpConfig.pt - Qual é o meu IP?</title>
+
   <meta name="theme-color" content="#1f1f47">
-  <link rel="canonical" href="https://teu-utilizador.github.io/teu-repo/">
-  <meta property="og:type" content="website">
-  <meta property="og:locale" content="pt_PT">
-  <meta property="og:title" content="IpConfig.pt - Qual é o meu IP? IPv4, IPv6, localização e navegador">
-  <meta property="og:description" content="IpConfig.pt mostra o teu IPv4, IPv6, ISP, localização aproximada e dados do navegador numa página rápida e simples.">
-  <meta property="og:url" content="https://teu-utilizador.github.io/teu-repo/">
-  <meta name="twitter:card" content="summary_large_image">
 
-  <link rel="dns-prefetch" href="//api.ipify.org">
-  <link rel="dns-prefetch" href="//api6.ipify.org">
-  <link rel="dns-prefetch" href="//ipinfo.io">
-  <link rel="preconnect" href="https://api.ipify.org" crossorigin>
-  <link rel="preconnect" href="https://api6.ipify.org" crossorigin>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: #0f0f23;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+    }
 
-  <link rel="stylesheet" href="css/ver_ip_mrquim.css">
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="assets/favicon-192.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon-180.png">
+    /* Loader fullscreen */
+    #loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #0f0f23;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 9999;
+      color: #fff;
+    }
+
+    /* Spinner */
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid rgba(255,255,255,0.2);
+      border-top: 5px solid #ffffff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 15px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Iframe ocupa tudo */
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+  </style>
 </head>
+
 <body>
-  <header class="glass-banner">
-    <div class="brand-lockup">
-      <img src="assets/logo-ipconfig.png" alt="IpConfig.pt" class="site-logo" width="575" height="185">
-    </div>
-    <p class="eyebrow">Ferramenta online</p>
-    <h1>Descobre o teu endereço IP</h1>
-    <p>Consulta o teu IPv4, IPv6 e informações públicas de rede e sistema no IpConfig.pt.</p>
-  </header>
 
-  <main class="container">
-    <section class="ip-section" aria-label="Informações do IP">
-      <div class="info-block">
-        <span class="label">🔢 <strong>IPv4:</strong></span>
-        <button type="button" id="ipv4-value" class="copy-ip" data-copy-value="A verificar..." title="Clicar para copiar">A verificar...</button>
-      </div>
+  <!-- Loader -->
+  <div id="loader">
+    <div class="spinner"></div>
+    <div>A carregar...</div>
+  </div>
 
-      <div class="info-block">
-        <span class="label">🔡 <strong>IPv6:</strong></span>
-        <button type="button" id="ipv6-value" class="copy-ip" data-copy-value="A verificar..." title="Clicar para copiar">A verificar...</button>
-      </div>
+  <!-- Iframe -->
+  <iframe 
+    src="https://www.ip.joaquimdeoliveira.eu/novo"
+    onload="document.getElementById('loader').style.display='none'">
+  </iframe>
 
-      <div class="info-block info-block--subtle">
-        ℹ️ Se o teu ISP suportar IPv6 mas aqui aparecer “Não detetado”, o navegador ou a rota atual podem estar a usar apenas IPv4 nessa ligação.
-      </div>
-
-      <div class="info-block">
-        <span class="label">🌍 <strong>País:</strong></span>
-        <span id="country-value">A verificar...</span>
-      </div>
-
-      <div class="info-block">
-        <span class="label">🏢 <strong>ISP:</strong></span>
-        <span id="org-value">A verificar...</span>
-      </div>
-
-      <div class="info-block">
-        <span class="label">🖥️ <strong>Hostname:</strong></span>
-        <span id="hostname-value">A verificar...</span>
-      </div>
-
-      <div class="info-block">
-        <span class="label">🕐 <strong>Fuso Horário:</strong></span>
-        <span id="timezone-value">A verificar...</span>
-      </div>
-    </section>
-
-    <section class="content-card" aria-label="Sobre esta página">
-      <h2>O que esta página mostra</h2>
-      <p>Esta ferramenta deteta o teu endereço IP público, tenta identificar separadamente IPv4 e IPv6 e apresenta dados adicionais como ISP, localização aproximada, hostname, fuso horário, navegador, idioma e resolução do ecrã.</p>
-    </section>
-
-    <section id="extra-info" class="device-grid" aria-label="Informações do dispositivo"></section>
-  </main>
-
-  <footer class="footer">
-    <p>&copy; <span id="year"></span> IpConfig.pt - Qual é o meu IP?</p>
-  </footer>
-
-  <script src="js/script.js"></script>
 </body>
 </html>
