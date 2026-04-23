@@ -1,160 +1,136 @@
-const text = {
-  checking: 'A verificar...',
-  notDetected: 'Não detetado',
-  notAvailable: 'N/A',
-  clickToCopy: 'Clicar para copiar',
-  copied: 'Copiado!'
-};
+const IPINFO_TOKEN = '4e8af62f798d23';
 
-function setText(id, value) {
-  const el = document.getElementById(id);
-  if (el) {
-    el.textContent = value;
-    if (el.classList.contains('copy-ip')) {
-      el.dataset.copyValue = value;
-      el.title = value && value !== text.notDetected && value !== text.checking ? text.clickToCopy : '';
-      el.disabled = !value || value === text.notDetected || value === text.checking;
-    }
-  }
+const ipv4El = document.getElementById('ipv4-value');
+const ipv6El = document.getElementById('ipv6-value');
+const countryEl = document.getElementById('country-value');
+const orgEl = document.getElementById('org-value');
+const hostnameEl = document.getElementById('hostname-value');
+const timezoneEl = document.getElementById('timezone-value');
+const extraInfoEl = document.getElementById('extra-info');
+
+document.getElementById('year').textContent = new Date().getFullYear();
+
+function setButtonValue(el, value) {
+  el.textContent = value;
+  el.dataset.copyValue = value;
+}
+
+async function fetchText(url) {
+  const response = await fetch(url, { cache: 'no-store' });
+  if (!response.ok) throw new Error('Erro ao obter dados');
+  return await response.text();
 }
 
 async function fetchJson(url) {
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: { 'Accept': 'application/json' },
-    cache: 'no-store'
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
-  }
-
-  return response.json();
+  const response = await fetch(url, { cache: 'no-store' });
+  if (!response.ok) throw new Error('Erro ao obter JSON');
+  return await response.json();
 }
 
-async function detectPublicIps() {
-  const results = await Promise.allSettled([
-    fetchJson('https://api.ipify.org?format=json'),
-    fetchJson('https://api6.ipify.org?format=json')
-  ]);
-
-  const ipv4 = results[0].status === 'fulfilled' && results[0].value?.ip ? results[0].value.ip : text.notDetected;
-  const ipv6 = results[1].status === 'fulfilled' && results[1].value?.ip ? results[1].value.ip : text.notDetected;
-
-  setText('ipv4-value', ipv4);
-  setText('ipv6-value', ipv6);
-
-  return {
-    ipv4: ipv4 !== text.notDetected ? ipv4 : null,
-    ipv6: ipv6 !== text.notDetected ? ipv6 : null
-  };
-}
-
-async function updateIpMetadata(preferredIp) {
-  if (!preferredIp) {
-    setText('country-value', text.notAvailable);
-    setText('org-value', text.notAvailable);
-    setText('hostname-value', text.notAvailable);
-    setText('timezone-value', text.notAvailable);
-    return;
-  }
-
+async function getIPv4() {
   try {
-    const url = `index.php?ajax=ipinfo&ip=${encodeURIComponent(preferredIp)}`;
-    const data = await fetchJson(url);
+    const ip = await fetchText('https://api.ipify.org');
+    return ip.trim();
+  } catch {
+    return null;
+  }
+}
 
-    if (!data?.ok || !data.info) {
-      throw new Error('Resposta inválida');
-    }
+async function getIPv6() {
+  try {
+    const ip = await fetchText('https://api6.ipify.org');
+    return ip.trim();
+  } catch {
+    return null;
+  }
+}
 
-    const info = data.info;
-    setText('country-value', `${info.country ?? text.notAvailable} (${info.region ?? text.notAvailable}, ${info.city ?? text.notAvailable})`);
-    setText('org-value', info.org ?? text.notAvailable);
-    setText('hostname-value', info.hostname ?? text.notAvailable);
-    setText('timezone-value', info.timezone ?? text.notAvailable);
-  } catch (error) {
-    setText('country-value', text.notAvailable);
-    setText('org-value', text.notAvailable);
-    setText('hostname-value', text.notAvailable);
-    setText('timezone-value', text.notAvailable);
+async function getIpInfo(ip) {
+  try {
+    const data = await fetchJson(`https://ipinfo.io/${encodeURIComponent(ip)}/json?token=${IPINFO_TOKEN}`);
+    return {
+      ip: data.ip || ip,
+      country: data.country || 'N/A',
+      region: data.region || 'N/A',
+      city: data.city || 'N/A',
+      org: data.org || 'N/A',
+      hostname: data.hostname || 'N/A',
+      timezone: data.timezone || 'N/A'
+    };
+  } catch {
+    return null;
   }
 }
 
 function renderDeviceInfo() {
-  const target = document.querySelector('#extra-info');
-  if (!target) {
+  const items = [
+    ['Navegador', navigator.userAgent || 'N/A'],
+    ['Idioma', navigator.language || 'N/A'],
+    ['Resolução', `${window.screen.width} x ${window.screen.height}`],
+    ['Plataforma', navigator.platform || 'N/A'],
+    ['Cookies ativados', navigator.cookieEnabled ? 'Sim' : 'Não'],
+    ['Memória do dispositivo', navigator.deviceMemory ? `${navigator.deviceMemory} GB` : 'N/A'],
+    ['CPU lógica', navigator.hardwareConcurrency || 'N/A'],
+    ['Janela visível', `${window.innerWidth} x ${window.innerHeight}`]
+  ];
+
+  extraInfoEl.innerHTML = items.map(([label, value]) => `
+    <div class="info-block">
+      <span class="label"><strong>${label}:</strong></span>
+      <span>${value}</span>
+    </div>
+  `).join('');
+}
+
+async function init() {
+  renderDeviceInfo();
+
+  const [ipv4, ipv6] = await Promise.all([getIPv4(), getIPv6()]);
+
+  setButtonValue(ipv4El, ipv4 || 'Não detetado');
+  setButtonValue(ipv6El, ipv6 || 'Não detetado');
+
+  const bestIp = ipv6 || ipv4;
+
+  if (!bestIp) {
+    countryEl.textContent = 'Não foi possível detetar';
+    orgEl.textContent = 'Não foi possível detetar';
+    hostnameEl.textContent = 'Não foi possível detetar';
+    timezoneEl.textContent = 'Não foi possível detetar';
     return;
   }
 
-  const ua = navigator.userAgent || text.notAvailable;
-  const lang = navigator.language || text.notAvailable;
-  const cores = navigator.hardwareConcurrency || text.notAvailable;
-  const memory = navigator.deviceMemory ? `${navigator.deviceMemory} GB` : text.notAvailable;
-  const screenSize = `${window.screen.width}x${window.screen.height}`;
+  const info = await getIpInfo(bestIp);
 
-  target.innerHTML = `
-    <div class="info-block"><span class="label">🌐 <strong>Navegador:</strong></span> <span>${navigator.appName} (${navigator.appVersion})</span></div>
-    <div class="info-block"><span class="label">🖥️ <strong>Resolução:</strong></span> <span>${screenSize}</span></div>
-    <div class="info-block"><span class="label">🗣️ <strong>Idioma:</strong></span> <span>${lang}</span></div>
-    <div class="info-block"><span class="label">⚙️ <strong>CPU lógica:</strong></span> <span>${cores}</span></div>
-    <div class="info-block"><span class="label">💾 <strong>Memória estimada:</strong></span> <span>${memory}</span></div>
-    <div class="info-block info-block--full"><span class="label">🧭 <strong>User-Agent:</strong></span> <span class="ua-text">${ua}</span></div>
-  `;
+  if (!info) {
+    countryEl.textContent = 'Não foi possível obter dados';
+    orgEl.textContent = 'Não foi possível obter dados';
+    hostnameEl.textContent = 'Não foi possível obter dados';
+    timezoneEl.textContent = 'Não foi possível obter dados';
+    return;
+  }
+
+  countryEl.textContent = `${info.country} (${info.region}, ${info.city})`;
+  orgEl.textContent = info.org;
+  hostnameEl.textContent = info.hostname;
+  timezoneEl.textContent = info.timezone;
 }
 
-window.addEventListener('DOMContentLoaded', async () => {
-  bindCopyButtons();
-  renderDeviceInfo();
-  const ips = await detectPublicIps();
-  await updateIpMetadata(ips.ipv6 || ips.ipv4);
+document.addEventListener('click', async (event) => {
+  const btn = event.target.closest('.copy-ip');
+  if (!btn) return;
+
+  const value = btn.dataset.copyValue || '';
+  if (!value || value === 'A verificar...' || value === 'Não detetado') return;
+
+  try {
+    await navigator.clipboard.writeText(value);
+    const originalText = btn.textContent;
+    btn.textContent = 'Copiado!';
+    setTimeout(() => {
+      btn.textContent = value;
+    }, 1200);
+  } catch {}
 });
 
-
-async function copyTextToClipboard(value) {
-  if (!navigator.clipboard?.writeText) {
-    const tempInput = document.createElement('input');
-    tempInput.value = value;
-    document.body.appendChild(tempInput);
-    tempInput.select();
-    document.execCommand('copy');
-    tempInput.remove();
-    return;
-  }
-
-  await navigator.clipboard.writeText(value);
-}
-
-function bindCopyButtons() {
-  document.querySelectorAll('.copy-ip').forEach((button) => {
-    button.addEventListener('click', async (event) => {
-      if (event.button !== 0) {
-        return;
-      }
-
-      const value = button.dataset.copyValue || button.textContent.trim();
-      if (!value || value === text.notDetected || value === text.checking) {
-        return;
-      }
-
-      const originalText = button.textContent;
-      const originalTitle = button.title;
-
-      try {
-        await copyTextToClipboard(value);
-        button.classList.add('copy-ip--copied');
-        button.textContent = text.copied;
-        button.title = text.copied;
-      } catch (error) {
-        button.classList.add('copy-ip--copied');
-        button.textContent = 'Falha ao copiar';
-        button.title = 'Falha ao copiar';
-      }
-
-      window.setTimeout(() => {
-        button.classList.remove('copy-ip--copied');
-        button.textContent = originalText;
-        button.title = originalTitle || text.clickToCopy;
-      }, 1200);
-    });
-  });
-}
+init();
